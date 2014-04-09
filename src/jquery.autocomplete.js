@@ -107,6 +107,13 @@
         that.hint = null;
         that.hintValue = '';
         that.selection = null;
+        that.text = function () {
+            // Support for contenteditable="true"
+            if(that.el[0].tagName == 'INPUT')
+                return that.el.val();
+            else
+                return that.el.text();
+        };
 
         // Initialize and set options:
         that.initialize();
@@ -191,7 +198,7 @@
         onFocus: function () {
             var that = this;
             that.fixPosition();
-            if (that.options.minChars <= that.el.val().length) {
+            if (that.options.minChars <= that.text().length) {
                 that.onValueChange();
             }
         },
@@ -292,7 +299,7 @@
 
         isCursorAtEnd: function () {
             var that = this,
-                valLength = that.el.val().length,
+                valLength = that.text().length,
                 selectionStart = that.element.selectionStart,
                 range;
 
@@ -377,7 +384,7 @@
 
             clearInterval(that.onChangeInterval);
 
-            if (that.currentValue !== that.el.val()) {
+            if (that.currentValue !== that.text()) {
                 that.findBestHint();
                 if (that.options.deferRequestBy > 0) {
                     // Defer lookup in case when value changes very quickly:
@@ -393,7 +400,7 @@
         onValueChange: function () {
             var that = this,
                 options = that.options,
-                value = that.el.val(),
+                value = that.text(),
                 query = that.getQuery(value),
                 index;
 
@@ -602,7 +609,7 @@
 
         findBestHint: function () {
             var that = this,
-                value = that.el.val().toLowerCase(),
+                value = that.text().toLowerCase(),
                 bestMatch = null;
 
             if (!value) {
