@@ -56,6 +56,7 @@
                 autoSelectFirst: false,
                 appendTo: 'body',
                 serviceUrl: null,
+                serviceAdapter: null,
                 lookup: null,
                 onSelect: null,
                 width: 'auto',
@@ -481,6 +482,7 @@
                 that = this,
                 options = that.options,
                 serviceUrl = options.serviceUrl,
+                serviceAdapter = options.serviceAdapter,
                 params,
                 cacheKey;
 
@@ -507,19 +509,19 @@
                 if (that.currentRequest) {
                     that.currentRequest.abort();
                 }
-                that.currentRequest = $.ajax({
-                    url: serviceUrl,
+                that.currentRequest = serviceAdapter.ajax(serviceUrl, options.type, {
                     data: params,
-                    type: options.type,
                     dataType: options.dataType
-                }).done(function (data) {
+                });
+
+                that.currentRequest.then(function (data) {
                     var result;
                     that.currentRequest = null;
                     result = options.transformResult(data);
                     that.processResponse(result, q, cacheKey);
                     options.onSearchComplete.call(that.element, q, result.suggestions);
-                }).fail(function (jqXHR, textStatus, errorThrown) {
-                    options.onSearchError.call(that.element, q, jqXHR, textStatus, errorThrown);
+                }, function (error) {
+                    options.onSearchError.call(that.element, q, error);
                 });
             }
         },
