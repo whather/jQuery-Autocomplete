@@ -509,12 +509,12 @@
                 if (that.currentRequest) {
                     that.currentRequest.abort();
                 }
-                that.currentRequest = serviceAdapter.ajax(serviceUrl, options.type, {
+                var requestPromise = serviceAdapter.ajax(serviceUrl, options.type, {
                     data: params,
                     dataType: options.dataType
                 });
 
-                that.currentRequest.then(function (data) {
+                requestPromise.then(function (data) {
                     var result;
                     that.currentRequest = null;
                     result = options.transformResult(data);
@@ -523,6 +523,8 @@
                 }, function (error) {
                     options.onSearchError.call(that.element, q, error);
                 });
+
+                that.currentRequest = requestPromise._detail;
             }
         },
 
