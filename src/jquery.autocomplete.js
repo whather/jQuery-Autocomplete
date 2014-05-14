@@ -66,6 +66,7 @@
                 params: {},
                 formatResult: Autocomplete.formatResult,
                 delimiter: null,
+                beforeDelimiter: false,
                 zIndex: 9999,
                 type: 'GET',
                 noCache: false,
@@ -108,12 +109,14 @@
         that.hint = null;
         that.hintValue = '';
         that.selection = null;
+        that.delimiterStart = -1;
         that.text = function () {
             // Support for contenteditable="true"
-            if(that.el[0].tagName == 'INPUT')
+            if(that.el[0].tagName == 'INPUT' || that.el[0].className.indexOf('ember-text-area') > -1) {
                 return that.el.val();
-            else
-                return that.el.text();
+            } else {
+                return that.el.val();
+            }
         };
 
         // Initialize and set options:
@@ -446,14 +449,37 @@
         },
 
         getQuery: function (value) {
-            var delimiter = this.options.delimiter,
-                parts;
+            var that = this,
+                delimiter = that.options.delimiter,
+                beforeDelimiter = that.options.beforeDelimiter,
+                parts, updatedValue, delimiterSearch, startPosition,
+                data;
 
             if (!delimiter) {
                 return value;
             }
-            parts = value.split(delimiter);
-            return $.trim(parts[parts.length - 1]);
+
+            if (beforeDelimiter && typeof delimiter === 'string') {
+              startPosition = that.element.selectionStart;
+              var endPosition = that.element.selectionEnd;
+              updatedValue = value.substring(0, startPosition);
+              delimiterSearch = updatedValue.substr((0 - delimiter.length));
+
+              if (delimiterSearch === delimiter || that.delimiterStart > -1) {
+                if (delimiterSearch === delimiter) {
+                  that.delimiterStart = startPosition;
+                }
+
+                data = value.substring(that.delimiterStart, endPosition);
+              } else {
+                data = "";
+              }
+            } else {
+              parts = value.split(delimiter);
+              data = $.trim(parts[parts.length - 1]);
+            }
+
+            return data;
         },
 
         getSuggestionsLocal: function (query) {
@@ -509,12 +535,12 @@
                 if (that.currentRequest) {
                     that.currentRequest.abort();
                 }
-                var requestPromise = serviceAdapter.ajax(serviceUrl, options.type, {
+                that.currentRequest = serviceAdapter.ajax(serviceUrl, options.type, {
                     data: params,
                     dataType: options.dataType
                 });
 
-                requestPromise.then(function (data) {
+                that.currentRequest.then(function (data) {
                     var result;
                     that.currentRequest = null;
                     result = options.transformResult(data);
@@ -523,8 +549,6 @@
                 }, function (error) {
                     options.onSearchError.call(that.element, q, error);
                 });
-
-                that.currentRequest = requestPromise._detail;
             }
         },
 
@@ -767,11 +791,33 @@
 
         onSelect: function (index) {
             var that = this,
+                delimiter = that.options.delimiter,
+                beforeDelimiter = that.options.beforeDelimiter,
                 onSelectCallback = that.options.onSelect,
-                suggestion = that.suggestions[index];
+                suggestion = that.suggestions[index],
+                suggestionValue, startPosition,
+                endPosition, valueParts;
 
-            that.currentValue = that.getValue(suggestion.value);
+            suggestionValue = suggestion.value;
+
+            if (beforeDelimiter && that.delimiterStart > -1) {
+              valueParts = suggestion.value.split(delimiter);
+              valueParts.shift();
+              suggestionValue = valueParts.join('');
+
+              startPosition = that.element.startPosition;
+              endPosition = that.element.endPosition;
+              that.delimiterStart = -1;
+
+              // var currentValue = that.currentValue.substring(0, startPosition);
+              // currentValue = currentValue + suggestionValue;
+              // currentValue = currentValue + that.currentValue.substring(endPosition, that.currentValue.length);
+              // that.currentValue = currentValue;
+            }
+
+            that.currentValue = that.getValue(suggestionValue);
             that.el.val(that.currentValue);
+
             that.signalHint(null);
             that.suggestions = [];
             that.selection = suggestion;
